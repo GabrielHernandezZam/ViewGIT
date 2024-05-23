@@ -1,13 +1,50 @@
-import { StatusBar } from 'expo-status-bar';
-import { Button, Image, StyleSheet, Text, TextInput, ToastAndroid, View  } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import 'react-native-gesture-handler';
-//Importacion Funcionamiento de tab Navigator
-import { TouchableOpacity } from 'react-native';
-//Importacion de imagen
-import usuarioImage from '../assets/usuario.png';
+import React, { useEffect, useState } from 'react';
+import { Button, Image, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from './firebaseConfig'; // Ajusta la ruta según donde hayas guardado firebaseConfig.js
+import usuarioImage from '../assets/usuario.png'; // Ajusta la ruta según donde hayas guardado usuario.png
 
 export default function AjustesUsuario() {
+  const [student, setStudent] = useState(null);
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+
+  useEffect(() => {
+    const fetchStudent = async () => {
+      try {
+        const docRef = doc(db, 'Alumno', '20100289'); // Usando el ID del documento proporcionado
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const studentData = docSnap.data();
+          setStudent(studentData);
+          setTelefono(studentData.telefono || '');
+          setDireccion(studentData.direccion || '');
+        } else {
+          console.log('No such document!');
+        }
+      } catch (error) {
+        console.error('Error fetching student data: ', error);
+      }
+    };
+
+    fetchStudent();
+  }, []);
+
+  const handleUpdate = async () => {
+    try {
+      const docRef = doc(db, 'Alumno', '20100289'); // Usando el ID del documento proporcionado
+      await updateDoc(docRef, {
+        telefono: telefono,
+        direccion: direccion,
+      });
+      ToastAndroid.show('Información actualizada', ToastAndroid.LONG);
+    } catch (error) {
+      console.error('Error updating student data: ', error);
+      ToastAndroid.show('Error al actualizar la información', ToastAndroid.LONG);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.form}>
@@ -17,49 +54,55 @@ export default function AjustesUsuario() {
           <Image source={usuarioImage} style={styles.logo} />
         </View>
 
-        <View style={styles.formInfo}>
-          <Text style={styles.infoText}>
-            <Text style={styles.boldText}>Nombre:</Text> Jesus Gabriel Hernandez Zamarripa
-          </Text>
-          <Text style={styles.infoText}>
-            <Text style={styles.boldText}>Carrera:</Text> Ing. Sistemas Computacionales
-          </Text>
-          <Text style={styles.infoText}>
-            <Text style={styles.boldText}>Matrícula:</Text> 20110580
-          </Text>
-          <Text style={styles.infoText}>
-            <Text style={styles.boldText}>Semestre:</Text> 8
-          </Text>
+        {student ? (
+          <View style={styles.formInfo}>
+            <Text style={styles.infoText}>
+              <Text style={styles.boldText}>Nombre:</Text> {student.nombre}
+            </Text>
+            <Text style={styles.infoText}>
+              <Text style={styles.boldText}>Carrera:</Text> {student.carrera}
+            </Text>
+            <Text style={styles.infoText}>
+              <Text style={styles.boldText}>Matrícula:</Text> 20100289
+            </Text>
+            <Text style={styles.infoText}>
+              <Text style={styles.boldText}>Semestre:</Text> {student.semestre}
+            </Text>
 
-          <View style={styles.formInput}>
-            <Text style={styles.inputText}>Número de Teléfono:</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-            />
-          </View>
+            <View style={styles.formInput}>
+              <Text style={styles.inputText}>Número de Teléfono:</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={telefono}
+                onChangeText={setTelefono}
+              />
+            </View>
 
-          <View style={styles.formInput}>
-            <Text style={styles.inputText}>Contraseña:</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="default"
-              secureTextEntry={true}
-            />
-          </View>
+            <View style={styles.formInput}>
+              <Text style={styles.inputText}>Dirección:</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="default"
+                value={direccion}
+                onChangeText={setDireccion}
+              />
+            </View>
 
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Actualizar Información"
-              onPress={() => ToastAndroid.show('CLICK', ToastAndroid.LONG)}
-              color="#39b54a"
-            />
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Actualizar Información"
+                onPress={handleUpdate}
+                color="#39b54a"
+              />
+            </View>
           </View>
-        </View>
+        ) : (
+          <Text>Cargando datos...</Text>
+        )}
       </View>
-      <StatusBar style="auto" />
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({

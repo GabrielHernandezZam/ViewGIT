@@ -1,46 +1,85 @@
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import 'react-native-gesture-handler';
-import { collection, getDocs } from "firebase/firestore"; // Importa las funciones necesarias de Firestore
-import { db } from './firebaseConfig'; // Asegúrate de que la ruta a tu configuración de Firebase sea correcta
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { db } from './firebaseConfig'; // Ajusta la ruta según donde hayas guardado firebaseConfig.js
 
-//Importacion Funcionamiento de tab Navigator
-import { TouchableOpacity } from 'react-native';
-import { TextInput } from 'react-native-gesture-handler';
-
-
+// Componente SubHeader: muestra un encabezado secundario
 const SubHeader = ({ text }) => (
   <View style={styles.subHeaderContainer}>
     <Text style={styles.subHeaderText}>{text}</Text>
   </View>
 );
 
+// Componente de perfil: muestra la información del estudiante
 const Profile = ({ student }) => (
-  // Ajusta los campos dentro de esta vista según los nombres de los campos en tus documentos de Firestore
   <View style={styles.profileContainer}>
-    <Image
-      style={styles.profileImage}
-      source={{ uri: 'https://img.icons8.com/ios-filled/100/000000/user.png' }}
-    />
     <View style={styles.infoContainer}>
+      <Text style={styles.infoText}>No. control: {student.id}</Text> {/* Mostrar ID del Documento */}
+      <Text style={styles.infoText}>Nombre: {student.nombre}</Text>
+      <Text style={styles.infoText}>Carrera: {student.carrera}</Text>
       <Text style={styles.infoText}>Semestre: {student.semestre}</Text>
     </View>
   </View>
 );
 
-export default function Calificaciones() {
+// Componente de tabla de calificaciones: muestra las calificaciones del estudiante en una tabla
+const CalificacionesTable = ({ grades }) => (
+  <View style={styles.tableContainer}>
+    <View style={[styles.tableRow, styles.tableHeaderRow]}>
+      <Text style={styles.tableHeader}>Materia</Text>
+      <Text style={styles.tableHeader}>Unidad 1</Text>
+      <Text style={styles.tableHeader}>Unidad 2</Text>
+      <Text style={styles.tableHeader}>Unidad 3</Text>
+      <Text style={styles.tableHeader}>Calificación</Text>
+    </View>
+    {grades.map((grade, index) => (
+      <View style={styles.tableRow} key={index}>
+        <Text style={styles.tableCell}>{grade.materiaNombre}</Text>
+        <Text style={styles.tableCell}>{grade.unidad_1}</Text>
+        <Text style={styles.tableCell}>{grade.unidad_2}</Text>
+        <Text style={styles.tableCell}>{grade.unidad_3}</Text>
+        <Text style={styles.tableCell}>{grade.CalFinal}</Text>
+      </View>
+    ))}
+  </View>
+);
 
- const [student, setStudent] = useState(null);
+// Componente principal: obtiene los datos del estudiante y sus calificaciones y los muestra
+export default function Calificaciones() {
+  const [student, setStudent] = useState(null); // Estado para almacenar los datos del estudiante
+  const [grades, setGrades] = useState([]); // Estado para almacenar las calificaciones
 
   useEffect(() => {
-    const fetchStudent = async () => {
-      // Cambia 'students' por el nombre de tu colección en Firestore
-      const querySnapshot = await getDocs(collection(db, "Alumno"));
-      // Si hay múltiples documentos y solo necesitas el primero, ajusta esto según sea necesario
-      const studentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))[0];
-      setStudent(studentData);
+    // Función para obtener los datos del estudiante y sus calificaciones
+    const fetchStudentAndGrades = async () => {
+      try {
+        // Obtener los datos del primer estudiante
+        const studentQuerySnapshot = await getDocs(collection(db, 'Alumno'));
+        const studentData = studentQuerySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))[0];
+        setStudent(studentData);
+
+        if (studentData) {
+          // Crear una consulta para obtener las calificaciones del estudiante usando su referencia
+          const gradesQuery = query(collection(db, 'Calificaciones'), where('alumno', '==', doc(db, `Alumno/${studentData.id}`)));
+          const gradesQuerySnapshot = await getDocs(gradesQuery);
+
+          // Resolver las referencias de materia y almacenar los datos de calificaciones
+          const gradesData = await Promise.all(gradesQuerySnapshot.docs.map(async doc => {
+            const gradeData = doc.data();
+            const materiaDoc = await getDoc(gradeData.materia);
+            const materiaNombre = materiaDoc.exists() ? materiaDoc.data().nombre : 'Desconocida';
+
+            return { ...gradeData, materiaNombre };
+          }));
+
+          setGrades(gradesData);
+        }
+      } catch (error) {
+        console.error('Error fetching data: ', error);
+      }
     };
 
-    fetchStudent();
+    fetchStudentAndGrades();
   }, []);
 
   return (
@@ -51,53 +90,19 @@ export default function Calificaciones() {
 
       <View style={styles.infoContainer}>
         <SubHeader text="Alumno" />
-        {student && <Profile student={student} />}
-        <Text style={styles.infoText}>
-          <Text style={styles.boldText}>Carrera:</Text> Ing. Sistemas Computacionales
-        </Text>
-        <Text style={styles.infoText}>
-          <Text style={styles.boldText}>No. control:</Text> 20210580
-        </Text>
+        {student ? (
+          <Profile student={student} />
+        ) : (
+          <Text>Cargando datos...</Text>
+        )}
       </View>
 
-      <View style={styles.tableContainer}>
-        <View style={[styles.tableRow, styles.tableHeaderRow]}>
-          <Text style={styles.tableHeader}>Materia</Text>
-          <Text style={styles.tableHeader}>Unidad 1</Text>
-          <Text style={styles.tableHeader}>Unidad 2</Text>
-          <Text style={styles.tableHeader}>Unidad 3</Text>
-          <Text style={styles.tableHeader}>Calificación</Text>
-        </View>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Cálculo</Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-        </View>
-
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>POO</Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-        </View>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Diseño web</Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-        </View>
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Innovacion</Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-          <Text style={styles.tableCell}></Text>
-        </View>
-      </View>
+      <SubHeader text="Calificaciones" />
+      {grades.length > 0 ? (
+        <CalificacionesTable grades={grades} />
+      ) : (
+        <Text style={styles.infoText}>No hay calificaciones disponibles.</Text>
+      )}
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>NA; No Aprobó</Text>
@@ -106,6 +111,7 @@ export default function Calificaciones() {
   );
 }
 
+// Estilos para los componentes
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -119,6 +125,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderRadius: 10,
     marginTop: 30,
+  },
+  subHeaderContainer: {
+    alignItems: 'center',
+    padding: 20,
   },
   headerText: {
     fontSize: 24,
