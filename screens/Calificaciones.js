@@ -1,11 +1,48 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import 'react-native-gesture-handler';
+import { collection, getDocs } from "firebase/firestore"; // Importa las funciones necesarias de Firestore
+import { db } from './firebaseConfig'; // Asegúrate de que la ruta a tu configuración de Firebase sea correcta
 
 //Importacion Funcionamiento de tab Navigator
 import { TouchableOpacity } from 'react-native';
 import { TextInput } from 'react-native-gesture-handler';
 
+
+const SubHeader = ({ text }) => (
+  <View style={styles.subHeaderContainer}>
+    <Text style={styles.subHeaderText}>{text}</Text>
+  </View>
+);
+
+const Profile = ({ student }) => (
+  // Ajusta los campos dentro de esta vista según los nombres de los campos en tus documentos de Firestore
+  <View style={styles.profileContainer}>
+    <Image
+      style={styles.profileImage}
+      source={{ uri: 'https://img.icons8.com/ios-filled/100/000000/user.png' }}
+    />
+    <View style={styles.infoContainer}>
+      <Text style={styles.infoText}>Semestre: {student.semestre}</Text>
+    </View>
+  </View>
+);
+
 export default function Calificaciones() {
+
+ const [student, setStudent] = useState(null);
+
+  useEffect(() => {
+    const fetchStudent = async () => {
+      // Cambia 'students' por el nombre de tu colección en Firestore
+      const querySnapshot = await getDocs(collection(db, "Alumno"));
+      // Si hay múltiples documentos y solo necesitas el primero, ajusta esto según sea necesario
+      const studentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))[0];
+      setStudent(studentData);
+    };
+
+    fetchStudent();
+  }, []);
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -13,9 +50,8 @@ export default function Calificaciones() {
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.infoText}>
-          <Text style={styles.boldText}>Semestre:</Text> 8
-        </Text>
+        <SubHeader text="Alumno" />
+        {student && <Profile student={student} />}
         <Text style={styles.infoText}>
           <Text style={styles.boldText}>Carrera:</Text> Ing. Sistemas Computacionales
         </Text>

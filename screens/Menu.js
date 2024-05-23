@@ -1,40 +1,67 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Image, ScrollView  } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import 'react-native-gesture-handler';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Image, ScrollView } from 'react-native';
+import { collection, getDocs } from "firebase/firestore"; // Importa las funciones necesarias de Firestore
+import { db } from './firebaseConfig'; // Asegúrate de que la ruta a tu configuración de Firebase sea correcta
 import ittImage from '../assets/itt.png';
-//Importacion Funcionamiento de tab Navigator
-import { TouchableOpacity } from 'react-native';
-import { TextInput } from 'react-native-gesture-handler';
 
+const Header = () => (
+  <View style={styles.header}>
+    <Text style={styles.headerText}>ITT ID</Text>
+  </View>
+);
+
+const Logo = () => (
+  <View style={styles.logoContainer}>
+    <Image
+      source={ittImage}
+      style={styles.logoImage}
+    />
+  </View>
+);
+
+const SubHeader = ({ text }) => (
+  <View style={styles.subHeaderContainer}>
+    <Text style={styles.subHeaderText}>{text}</Text>
+  </View>
+);
+
+const Profile = ({ student }) => (
+  // Ajusta los campos dentro de esta vista según los nombres de los campos en tus documentos de Firestore
+  <View style={styles.profileContainer}>
+    <Image
+      style={styles.profileImage}
+      source={{ uri: 'https://img.icons8.com/ios-filled/100/000000/user.png' }}
+    />
+    <View style={styles.infoContainer}>
+      <Text style={styles.infoText}>No. control:  {student.id}</Text> {/* Mostrar ID del Documento */}
+      <Text style={styles.infoText}>Nombre: {student.nombre}</Text>
+      <Text style={styles.infoText}>Carrera: {student.carrera}</Text>
+      <Text style={styles.infoText}>Semestre: {student.semestre}</Text>
+    </View>
+  </View>
+);
 
 export default function Menu() {
+  const [student, setStudent] = useState(null);
+
+  useEffect(() => {
+    const fetchStudent = async () => {
+      // Cambia 'students' por el nombre de tu colección en Firestore
+      const querySnapshot = await getDocs(collection(db, "Alumno"));
+      // Si hay múltiples documentos y solo necesitas el primero, ajusta esto según sea necesario
+      const studentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))[0];
+      setStudent(studentData);
+    };
+
+    fetchStudent();
+  }, []);
+
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>ITT ID</Text>
-      </View>
-      <View style={styles.logoContainer}>
-        <Image
-          source={ittImage}
-          style={styles.logoImage}
-        />
-      </View>
-      <View style={styles.subHeaderContainer}>
-        <Text style={styles.subHeaderText}>Estudiante</Text>
-      </View>
-      <View style={styles.profileContainer}>
-        <Image
-          style={styles.profileImage}
-          source={{ uri: 'https://img.icons8.com/ios-filled/100/000000/user.png' }}
-        />
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoText}>Nombre: Jesus Gabriel Hernandez Zamarripa</Text>
-          <Text style={styles.infoText}>Carrera: Ing. Sistemas Computacionales</Text>
-          <Text style={styles.infoText}>No. control: 20210580</Text>
-          <Text style={styles.infoText}>Semestre: 8</Text>
-        </View>
-      </View>
+      <Header />
+      <Logo />
+      <SubHeader text="Alumno" />
+      {student && <Profile student={student} />}
     </ScrollView>
   );
 }
@@ -45,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#4CAF50', // Green color
+    backgroundColor: '#4CAF50',
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
